@@ -1,0 +1,15 @@
+# Dependencias
+.vscode/
+build/
+imGui/
+*.mp4
+*.png
+*.jpeg
+*.jpg
+
+#archivos especificos
+*\prueba.cpp
+#otro
+*prueba2.cpp
+#otro
+*WEB.cpp
