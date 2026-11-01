@@ -6,6 +6,9 @@ imGui/
 *.png
 *.jpeg
 *.jpg
+*.milo
+*.ini
+*.txt
 
 #archivos especificos
 *\prueba.cpp

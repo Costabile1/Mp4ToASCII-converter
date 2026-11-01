@@ -1,3 +1,9 @@
+## 31/10
+- Puede encontrar que habia muchos problemas por lso cambios que fuimos haciendo, antes se ejecutaba el archivo process.cpp todo cada vez, ahora que tenemos un main. solo se ejcuta la funcion que procesa el video, por ende variables globales que antes funcionaban bien poe que se volvian a setear, con el nuevo programa quedaban con el ultimo cambio dentro de la funcion y al volver a invocarse solo la funcion de procesas el video, esas variables nunca volvian  a su estado proncipal y eso rompia las proximas codificaciones de videos.
+
+## 18/10
+- anda cuando Quiere
+
 ### 30/09
 - hoy me decidi por usar la libreria IMUGUI para dibujar los fotogramas, esta es mucho mas rapido ya que lo hace a bajo nivel y no procesa los caracteres como un texto real, solo los imprime en pantalla
 - Las Metricas que usabamos para medir la relacion entre el tiempo de procesado y de dibujado pasaron de unas 500 => lo cual ahcia todo muy lento, a ahora estar en torno a las 15 y 100, lo cual es una mejora sustancial.

@@ -1,3 +1,33 @@
+# Compilar proyecto:
+cmake -B build -S . -G "Ninja"
+cmake --build build
+
+# 🎬 Proyecto Milo: Conversor y Reproductor de Video a ASCII
+
+Milo es un motor escrito en C++ que transforma videos estándar (MP4, AVI, etc.) en arte ASCII de alta eficiencia. En lugar de procesar y renderizar texto en tiempo real con altos costos de CPU, Milo compila los videos en un formato binario propietario (`.milo`) utilizando compresión RLE y cálculo de gradientes. Luego, utiliza un visor de alto rendimiento basado en **SFML e ImGui** para reproducirlos de forma fluida.
+
+## ✨ Funcionalidades Principales
+
+* **Codificación por Gradientes (OpenCV):** Analiza cada fotograma mediante matrices de Sobel para detectar bordes y gradientes, asignando el carácter ASCII óptimo (`.`, `-`, `|`, `@`, etc.) según la intensidad y dirección de la luz.
+* **Formato Binario Propietario (`.milo`):** Los videos se empaquetan en archivos binarios optimizados mediante una cabecera estricta (`HeaderLILA`) que almacena metadatos (columnas, filas, FPS) y evita sobrecargas de memoria (padding).
+* **Compresión RLE (Run-Length Encoding):** Reduce drásticamente el tamaño del archivo `.milo` al comprimir secuencias de caracteres ASCII repetidos utilizando una sintaxis de control hexadecimal.
+* **Renderizado Acelerado por GPU:** Utiliza ImGui (configurado con índices de 32 bits) montado sobre SFML para dibujar fotogramas enteros de texto plano en pantalla sin colapsar, escalando dinámicamente la fuente para que el video siempre encaje perfectamente en la ventana.
+* **Gestor de Archivos Integrado:** Interfaz de línea de comandos (CLI) interactiva que escanea y administra automáticamente los videos convertidos dentro de la carpeta aislada `videos_milo/`.
+
+---
+
+## 🛠️ Requisitos Previos e Instalación
+
+Para compilar y ejecutar este proyecto, necesitas las siguientes herramientas y bibliotecas:
+
+1. **C++17 o superior** (necesario para `<filesystem>` y características modernas).
+2. **CMake** (Sistema de construcción).
+3. **OpenCV** (Para la extracción de fotogramas y filtros de imagen).
+4. **SFML** (Gestión de ventanas y contextos gráficos).
+5. **ImGui + ImGui-SFML** (Renderizado de interfaz y texto masivo). 
+   > **⚠️ Importante para ImGui:** Para evitar el error de *Assertion failed (16-bit indices)* al renderizar miles de caracteres, asegúrate de haber descomentado la línea `#define ImDrawIdx unsigned int` en tu archivo `imconfig.h`.
+
+
 # Especificación del Formato de Video ASCII (.milo)
 
 **Versión:** 1.0
