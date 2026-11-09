@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10)
 
 project(MiloAsciiPlayer VERSION 1.0 LANGUAGES CXX)
 
-set(OpenCV_DIR "C:/OpenCV_Source/opencv/build")
+
 set(SFML_DIR "C:/SMFL_LIBRARY/SFML-3.0.2/lib/cmake/SFML")
 set(IMGUI_DIR "C:/Users/santi/projects/ProyectoOpenCV/ImGui")
 
@@ -18,7 +18,7 @@ set(IMGUI_SOURCES
     ##${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-find_package(OpenCV REQUIRED)
+
 find_package(SFML 3.0.2 COMPONENTS Graphics Window System REQUIRED)
 
 ##Fuente Proyecto

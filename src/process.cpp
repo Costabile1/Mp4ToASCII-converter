@@ -1,11 +1,26 @@
 #include "process.hpp"
-#include <opencv2/opencv.hpp>
 #include <iostream>
 #include <cmath>
 #include <fstream>
 #include <SFML/Graphics.hpp>
 #include <string>
-#include <cstdint> // Asegúrate de incluir esto arriba
+#include <cstdint> 
+#include <cstdio>
+
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include "stb_image_resize2.h"
+
+#include <cstdio> // Para popen, pclose, fread
+#include <vector>
+
+// Macro para compatibilidad Windows/Linux de pipes
+#ifdef _WIN32
+    #define POPEN _popen
+    #define PCLOSE _pclose
+#else
+    #define POPEN popen
+    #define PCLOSE pclose
+#endif
 
 // Empaquetado estricto: cero basura entre variables
 #pragma pack(push, 1)
@@ -40,7 +55,7 @@ int ancho_char=250;
 
 std::vector<char> ASCCI = {' ', '.', ',', '-', '~', ':', ';', '=', '!', '*', 'i', 't', '1', 'l', 'o', 'w', 'm', '#','$','%','&', '@'};
 std::vector<char> spinner = {'|', '/', '-', '\\'};
-std::vector<cv::Vec2i> gradientes;
+
 
 void MostrarSpinnerCLI(int frame_actual) {
     int animacion_idx = frame_actual % 4;
@@ -152,7 +167,7 @@ int GradienteY(int valores[3][3]){
 
 int Process::codificarVideo(const std::string& rutaEntrada, const std::string& rutaSalida){
     bool hay_header=false;
-    std::cout << "OpenCV Version: " << CV_VERSION << std::endl;
+
     std::ofstream archivo_salida(rutaSalida, std::ios::binary);
     std::vector<int> repetidos;
     std::vector<double> tamaños_frames;
@@ -162,59 +177,87 @@ int Process::codificarVideo(const std::string& rutaEntrada, const std::string& r
     }
     std::string string_ascii;
     std::string buffer;
-    cv::VideoCapture cap(rutaEntrada);
-    if(!cap.isOpened()){
-        std::cout << "Error: No se cargo el Video" << std::endl;
-        return 1;
-    }
+    //Inicializamos la estrcutura con el tamaño del primer frame.
     struct HeaderLILA header;
     struct framehdr framehdr_buffer;
-    cv::Mat frame;
-    //Inicializamos la estrcutura con el tamaño del primer frame.
-    bool hay_frame=cap.read(frame);
-    std::cout<<"ANCHO FRAME : "<<frame.cols<<std::endl;
-    std::cout<<"Largo FRAME : "<<frame.rows<<std::endl;
+
+    int ancho_original=0, alto_original=0;
+    std::string cmd_probe = "ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 \"" + rutaEntrada + "\"";
+    FILE* probe = POPEN(cmd_probe.c_str(), "r");
+    if (probe) {
+        fscanf(probe, "%dx%d", &ancho_original, &alto_original);
+        PCLOSE(probe);
+    }
+
+    if (ancho_original == 0 || alto_original == 0) {
+        std::cout << "Error: ffprobe no pudo leer las dimensiones del video. Verifica la ruta." << std::endl;
+        return 1;
+    }
+
+    double proporcion = (double)alto_original / ancho_original;
+    int alto_char = (int)((ancho_char * proporcion) * 0.4);
+
+    // 2. Definir tamaños de memoria
+    size_t size_original = ancho_original * alto_original; // 1 byte por píxel (grises)
+    size_t size_chico = ancho_char * alto_char;
+
+    // Vectores crudos de C++ para reemplazar a cv::Mat
+    std::vector<uint8_t> frame_original(size_original);
+    std::vector<uint8_t> frame_chico(size_chico);
+
+    
+    std::string cmd_ffmpeg = "ffmpeg -i \"" + rutaEntrada + "\" -f image2pipe -pix_fmt gray -vcodec rawvideo - 2> NUL";
+    FILE* pipe = POPEN(cmd_ffmpeg.c_str(), "rb");
+    if (!pipe) {
+        std::cout << "Error al iniciar FFmpeg." << std::endl;
+        return 1;
+    }
+
     std::cout<<"SIZE HEader LILA: "<<sizeof(struct HeaderLILA)<<std::endl;
     std::cout<<"FPS header Frame"<<sizeof(struct framehdr)<<std::endl;
     int largo_string_ascii=0;
     int ancho_string_ascii=0;
     int cant_frames=0;
-    while(hay_frame){
+    while(fread(frame_original.data(),1,size_original,pipe)==size_original){
         MostrarSpinnerCLI(cant_frames);
+
+        // Achicar la imagen con STB (Reemplaza a cv::resize)
+        stbir_resize_uint8_linear(
+            frame_original.data(), ancho_original, alto_original, 0,
+            frame_chico.data(), ancho_char, alto_char, 0, 
+            STBIR_1CHANNEL
+        );
+
         struct framehdr framehdr;
         string_ascii="";
         ancho_string_ascii=0;
         framehdr.id=cant_frames;
-        if(frame.empty()){
-            std::cout<<"frame vacio"<<std::endl;
-            break;
-        }
-        double proporcion=(double)frame.rows/frame.cols;
-        int alto_char = (ancho_char *  proporcion) * 0.4;
-        cv::resize(frame,frame,cv::Size(ancho_char,alto_char));
-        cv::cvtColor(frame, frame, cv::COLOR_BGR2GRAY);
+    
+
         if(!hay_header){
-            int columnas= frame.cols-1;  //RESTAMOS 1 POR QUE EN NUETROS BUCLES ITERAMOS DEL 1 A N-1, LOS FRAMES DE LOS BORDES NO LOS MMIRAMOS, pero tnemos en cuenta que a cada liena le agregamos un /n
-            int filas=frame.rows-2;    //RESTAMOS 2 POR QUE EN NUETROS BUCLES ITERAMOS DEL 1 A N-1, LOS FRAMES DE LOS BORDES NO LOS MMIRAMOS
+            int columnas= ancho_char-1;  //RESTAMOS 1 POR QUE EN NUETROS BUCLES ITERAMOS DEL 1 A N-1, LOS FRAMES DE LOS BORDES NO LOS MMIRAMOS, pero tnemos en cuenta que a cada liena le agregamos un /n
+            int filas=alto_char-2;    //RESTAMOS 2 POR QUE EN NUETROS BUCLES ITERAMOS DEL 1 A N-1, LOS FRAMES DE LOS BORDES NO LOS MMIRAMOS
             header.columnas=columnas;
             header.filas=filas;
             header.fps=30;
             archivo_salida.write(reinterpret_cast<char*>(&header), sizeof(HeaderLILA));
             hay_header=true;
         }
-        for (int i=1;i<frame.rows-1;i++){
+        for (int i=1;i<alto_char-1;i++){
             ///ARMAMOS EL HEADER FRAME
             
             int GX,GY;
-            uchar *p_sup = frame.ptr<uchar>(i-1);
-            uchar *p_current = frame.ptr<uchar>(i);
-            uchar *p_inf = frame.ptr<uchar>(i+1);
+            int inicio_fila_sup = (i - 1) * ancho_char;
+            int inicio_fila_cur = i * ancho_char;
+            int inicio_fila_inf = (i + 1) * ancho_char;
+        
+
             largo_string_ascii=0;
-            for(int j=1;j<frame.cols-1;j++){
-                int valores[3][3] ={
-                    {p_sup[j-1],p_sup[j],p_sup[j+1]},
-                    {p_current[j-1],p_current[j],p_current[j+1]},
-                    {p_inf[j-1],p_inf[j],p_inf[j+1]}
+            for(int j=1;j<ancho_char-1;j++){
+                int valores[3][3] = {
+                    {frame_chico[inicio_fila_sup + j - 1], frame_chico[inicio_fila_sup + j], frame_chico[inicio_fila_sup + j + 1]},
+                    {frame_chico[inicio_fila_cur + j - 1], frame_chico[inicio_fila_cur + j], frame_chico[inicio_fila_cur + j + 1]},
+                    {frame_chico[inicio_fila_inf + j - 1], frame_chico[inicio_fila_inf + j], frame_chico[inicio_fila_inf + j + 1]}
                 };
                 GX = GradienteX(valores);
                 GY = GradienteY(valores);
@@ -254,9 +297,10 @@ int Process::codificarVideo(const std::string& rutaEntrada, const std::string& r
         tamaños_frames.push_back(string_ascii.size());
         archivo_salida.write(reinterpret_cast<char*>(&framehdr), sizeof(framehdr));
         archivo_salida.write(string_ascii.c_str(),(string_ascii.size()));
-        hay_frame=cap.read(frame);
+
         cant_frames++;
     }
+    PCLOSE(pipe);
     archivo_salida.close();
 
     std::cout<<"COMPROBACION"<<std::endl;
@@ -276,6 +320,7 @@ int Process::codificarVideo(const std::string& rutaEntrada, const std::string& r
     //AnalizisGradiente();
     //cv::imshow("OpenCV Test", img);
     //cv::imshow("Gradiente", img_grad);
+    
 
     return 0;
 }
