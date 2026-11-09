@@ -273,23 +273,6 @@ int Process::codificarVideo(const std::string& rutaEntrada, const std::string& r
         
         repetidos.push_back(BuscarRepetidos(string_ascii,header));
         string_ascii+='\x04'; //caracter que termina la tramsicion del frame
-        if(cant_frames==4){
-            std::ofstream archivo_salida("prueba1frame.txt");
-            archivo_salida.write(string_ascii.c_str(),string_ascii.size());
-          
-        }
-        // if(buffer.empty()){
-        //     buffer.asing(string_ascii,string_ascii.size());
-        //     framehdr_buffer=framehdr;
-        // }else{
-        //     // if(CompararLineas(buffer,string_ascii,header,framehdr_buffer,framehdr)==0){
-        //     //     buffer="";
-        //     // }
-        //     //framehdr_buffer.soy_copiado=true;
-        //     BuscarRepetidos(string_ascii,header);
-        // }
-        
-        //CompararColumna();
         
         //necesito almacenar todo mi frame.
         
